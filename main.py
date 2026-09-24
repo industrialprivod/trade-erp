@@ -391,4 +391,4 @@ def update_order(order_id: int, status: str = Form(...), payment_status: str = F
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "trade-erp", "database": "postgresql" if DATABASE_URL else "sqlite"
+    return {"status": "ok", "app": "trade-erp", "database": "postgresql" if DATABASE_URL else "sqlite"}
