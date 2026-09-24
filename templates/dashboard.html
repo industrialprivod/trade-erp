@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% block title %}Дашборд · Trade ERP{% endblock %}{% block content %}
+<div class="page-head"><div><h1>Дашборд</h1><p>Оперативное состояние торговли</p></div><div class="date">{{ request.url.hostname }}</div></div>
+<div class="cards">
+  <div class="card metric"><span>Клиенты</span><b>{{ stats.clients }}</b></div><div class="card metric"><span>Поставщики</span><b>{{ stats.suppliers }}</b></div><div class="card metric"><span>Номенклатура</span><b>{{ stats.products }}</b></div><div class="card metric"><span>Активные RFQ</span><b>{{ stats.active_rfqs }}</b></div><div class="card metric wide"><span>Продажи, учтено</span><b>{{ '%.2f'|format(stats.sales) }} ₽</b></div>
+</div>
+<div class="grid-2"><section class="card"><div class="section-head"><h2>Последние RFQ</h2><a href="/rfqs">Все →</a></div><div class="table-wrap"><table><thead><tr><th>№</th><th>Клиент</th><th>Запрос</th><th>Статус</th></tr></thead><tbody>{% for r in recent_rfqs %}<tr><td><a href="/rfqs/{{ r.id }}">{{ r.number }}</a></td><td>{{ r.client.name }}</td><td>{{ r.title }}</td><td><span class="badge">{{ r.status }}</span></td></tr>{% else %}<tr><td colspan="4" class="empty">Пока нет заявок</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="card"><div class="section-head"><h2>Последние заказы</h2><a href="/orders">Все →</a></div><div class="table-wrap"><table><thead><tr><th>№</th><th>Тип</th><th>Компания</th><th>Сумма</th></tr></thead><tbody>{% for o in recent_orders %}<tr><td>{{ o.number }}</td><td>{{ o.order_type }}</td><td>{{ o.company.name }}</td><td>{{ '%.2f'|format(o.amount) }} {{ o.currency }}</td></tr>{% else %}<tr><td colspan="4" class="empty">Пока нет заказов</td></tr>{% endfor %}</tbody></table></div></section></div>
+{% endblock %}

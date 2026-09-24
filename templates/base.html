@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Trade ERP{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">T</span><div><b>Trade ERP</b><small>Управление торговлей</small></div></div>
+    <nav>
+      <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">▦ Дашборд</a>
+      <a href="/companies" class="{% if request.url.path.startswith('/companies') %}active{% endif %}">◎ Контрагенты</a>
+      <a href="/products" class="{% if request.url.path.startswith('/products') %}active{% endif %}">□ Номенклатура</a>
+      <a href="/rfqs" class="{% if request.url.path.startswith('/rfqs') %}active{% endif %}">⇄ Заявки / RFQ</a>
+      <a href="/orders" class="{% if request.url.path.startswith('/orders') %}active{% endif %}">≡ Заказы</a>
+    </nav>
+    <div class="sidebar-bottom"><span>{{ user.username }} · {{ user.role }}</span><a href="/logout">Выйти</a></div>
+  </aside>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>
