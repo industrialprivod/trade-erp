@@ -1,0 +1,14 @@
+services:
+  trade-erp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ERP_SECRET_KEY: "CHANGE-ME-IN-PRODUCTION"
+      ERP_ADMIN_PASSWORD: "CHANGE-ME"
+      ERP_DB_PATH: "/data/erp.db"
+    volumes:
+      - erp_data:/data
+    restart: unless-stopped
+volumes:
+  erp_data:
