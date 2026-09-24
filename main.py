@@ -19,7 +19,7 @@ from starlette.middleware.sessions import SessionMiddleware
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("ERP_DB_PATH", os.path.join(BASE_DIR, "erp.db"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-SECRET_KEY = os.environ.get("ERP_SECRET_KEY", "change-this-secret-in-production")
+SECRET_KEY = os.environ.get("ERP_SECRET_KEY") or os.environ.get("SESSION_SECRET") or "change-this-secret-in-production"
 HTTPS_ONLY = os.environ.get("ERP_HTTPS_ONLY", "0") == "1"
 
 app = FastAPI(title="Trade ERP", version="0.2.0")
@@ -28,7 +28,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 if DATABASE_URL:
-    # Render supplies a PostgreSQL connection string through DATABASE_URL.
+    # Replit/Render can provide a plain PostgreSQL URL. Use psycopg v3 explicitly.
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 else:
     # Local fallback remains available for testing on a PC.
@@ -193,7 +197,7 @@ def login_page(request: Request, db: Session = Depends(get_db)):
     ensure_seed(db)
     if request.session.get("user_id"):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request=request, name="login.html", context={"error": None})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -201,7 +205,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     ensure_seed(db)
     user = db.scalar(select(User).where(User.username == username.strip()))
     if not user or not verify_password(password, user.password_hash):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный логин или пароль"}, status_code=400)
+        return templates.TemplateResponse(request=request, name="login.html", context={"error": "Неверный логин или пароль"}, status_code=400)
     request.session["user_id"] = user.id
     return RedirectResponse("/", status_code=303)
 
@@ -225,7 +229,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
     sales = db.scalar(select(func.coalesce(func.sum(Order.amount), 0)).where(Order.order_type == "Продажа")) or 0
     recent_rfqs = db.scalars(select(RFQ).order_by(RFQ.created_at.desc()).limit(8)).all()
     recent_orders = db.scalars(select(Order).order_by(Order.created_at.desc()).limit(8)).all()
-    return templates.TemplateResponse("dashboard.html", ctx(request, user, stats={
+    return templates.TemplateResponse(request=request, name="dashboard.html", context=ctx(request, user, stats={
         "clients": clients, "suppliers": suppliers, "products": products, "active_rfqs": active_rfqs, "sales": sales
     }, recent_rfqs=recent_rfqs, recent_orders=recent_orders))
 
@@ -236,7 +240,7 @@ def companies(request: Request, kind: str = "", db: Session = Depends(get_db), u
     if kind:
         stmt = stmt.where(Company.kind == kind)
     rows = db.scalars(stmt).all()
-    return templates.TemplateResponse("companies.html", ctx(request, user, companies=rows, kind=kind))
+    return templates.TemplateResponse(request=request, name="companies.html", context=ctx(request, user, companies=rows, kind=kind))
 
 
 @app.post("/companies")
@@ -268,7 +272,7 @@ def products(request: Request, q: str = "", db: Session = Depends(get_db), user:
         like = f"%{q}%"
         stmt = stmt.where((Product.name.ilike(like)) | (Product.sku.ilike(like)) | (Product.brand.ilike(like)))
     rows = db.scalars(stmt).all()
-    return templates.TemplateResponse("products.html", ctx(request, user, products=rows, q=q))
+    return templates.TemplateResponse(request=request, name="products.html", context=ctx(request, user, products=rows, q=q))
 
 
 @app.post("/products")
@@ -287,7 +291,7 @@ def add_product(
 def rfqs(request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
     rows = db.scalars(select(RFQ).order_by(RFQ.created_at.desc())).all()
     clients = db.scalars(select(Company).where(Company.kind.in_(["client", "both"])).order_by(Company.name)).all()
-    return templates.TemplateResponse("rfqs.html", ctx(request, user, rfqs=rows, clients=clients))
+    return templates.TemplateResponse(request=request, name="rfqs.html", context=ctx(request, user, rfqs=rows, clients=clients))
 
 
 @app.post("/rfqs")
@@ -313,7 +317,7 @@ def rfq_detail(rfq_id: int, request: Request, db: Session = Depends(get_db), use
     total_sale = sum(i.sale_price * i.qty for i in rfq.items)
     profit = total_sale - total_cost
     margin = (profit / total_sale * 100) if total_sale else 0
-    return templates.TemplateResponse("rfq_detail.html", ctx(request, user, rfq=rfq, products=products, totals={
+    return templates.TemplateResponse(request=request, name="rfq_detail.html", context=ctx(request, user, rfq=rfq, products=products, totals={
         "cost": total_cost, "sale": total_sale, "profit": profit, "margin": margin
     }))
 
@@ -357,7 +361,7 @@ def delete_rfq_item(rfq_id: int, item_id: int, db: Session = Depends(get_db), us
 def orders(request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
     rows = db.scalars(select(Order).order_by(Order.created_at.desc())).all()
     companies = db.scalars(select(Company).order_by(Company.name)).all()
-    return templates.TemplateResponse("orders.html", ctx(request, user, orders=rows, companies=companies))
+    return templates.TemplateResponse(request=request, name="orders.html", context=ctx(request, user, orders=rows, companies=companies))
 
 
 @app.post("/orders")
